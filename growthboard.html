@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrowthBoard — Opportunity Tracker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+if (!window.storage) {
+  const mem = {};
+  window.storage = {
+    get: async (k) => (k in mem ? { key: k, value: mem[k] } : null),
+    set: async (k, v) => { mem[k] = v; return { key: k, value: v }; },
+    delete: async (k) => { delete mem[k]; return { key: k, deleted: true }; },
+    list: async () => ({ keys: Object.keys(mem) }),
+  };
+}
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ============================================================
+   GROWTHBOARD — v1.1
+   An opportunity tracker for growth teams.
+
+   Core record: MOVE (a growth opportunity)
+   Views: Moves · Meetings · Members
+   Each Move carries Problem / Solution / Results / Risks,
+   Tasks (multi-assign), Notes, and file backup links.
+   ============================================================ */
+
+const C = {
+  deepNavy: "#0b1421", darkNavy: "#133865", brandBlue: "#365aa0",
+  steelBlue: "#718dbc", lightBlue: "#c5d9fa", lightGray: "#ededed",
+  gold: "#ebb018", brightBlue: "#4e84de", red: "#b3452f", green: "#2e6b34",
+};
+const FONT_HEAD = "'Oswald', 'Arial Narrow', Arial, sans-serif";
+const FONT_BODY = "'Open Sans', Arial, Helvetica, sans-serif";
+const STORAGE_KEY = "growthboard-v1-1";
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const today = () => new Date().toISOString().slice(0, 10);
+
+const STAGES = ["New", "In Review", "In Progress", "Resolved", "Closed"];
+const TASK_STATUSES = ["Open", "In Progress", "Done"];
+const IMPACT_TYPES = ["Top Line", "Bottom Line"];
+
+/* Fresh start — members are added by the team */
+const seed = () => ({ members: [], moves: [], tasks: [], meetings: [] });
+
+/* ---------- primitives ---------- */
+
+const inputStyle = {
+  fontFamily: FONT_BODY, fontSize: 13, padding: "8px 10px",
+  border: `1px solid ${C.lightGray}`, borderRadius: 6, outline: "none",
+  color: C.deepNavy, background: "#fff", width: "100%", boxSizing: "border-box",
+};
+const labelStyle = {
+  fontFamily: FONT_HEAD, fontSize: 10.5, letterSpacing: 1.2,
+  textTransform: "uppercase", color: C.steelBlue, display: "block", marginBottom: 4,
+};
+const GoldRule = ({ mb = 0, w = 44 }) => <div style={{ height: 3, width: w, background: C.gold, borderRadius: 2, marginBottom: mb }} />;
+
+function Btn({ children, onClick, kind = "primary", small, style }) {
+  const kinds = {
+    primary: { background: C.darkNavy, color: "#fff" },
+    gold: { background: C.gold, color: C.deepNavy },
+    ghost: { background: "transparent", color: C.brandBlue, border: `1px solid ${C.lightBlue}` },
+    danger: { background: "transparent", color: C.red, border: "1px solid #eecfc6" },
+  };
+  return (
+    <button onClick={onClick} style={{ fontFamily: FONT_BODY, fontWeight: 600, fontSize: small ? 12 : 13, padding: small ? "6px 12px" : "9px 16px", borderRadius: 6, border: "none", cursor: "pointer", ...kinds[kind], ...style }}>
+      {children}
+    </button>
+  );
+}
+
+const stageColors = {
+  New: { bg: "#fdf3d7", fg: "#8a6410" },
+  "In Review": { bg: C.lightBlue, fg: C.darkNavy },
+  "In Progress": { bg: "#dbe7fb", fg: C.brandBlue },
+  Resolved: { bg: "#ddefdd", fg: C.green },
+  Closed: { bg: C.lightGray, fg: C.steelBlue },
+};
+const taskColors = {
+  Open: { bg: "#fdf3d7", fg: "#8a6410" },
+  "In Progress": { bg: C.lightBlue, fg: C.darkNavy },
+  Done: { bg: "#ddefdd", fg: C.green },
+};
+
+function Pill({ value, options, onChange, colorMap }) {
+  const c = (colorMap && colorMap[value]) || { bg: C.lightGray, fg: C.deepNavy };
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} style={{ fontFamily: FONT_BODY, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, border: "none", background: c.bg, color: c.fg, cursor: "pointer", appearance: "none", WebkitAppearance: "none" }}>
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+function MemberSelect({ value, members, onChange, placeholder }) {
+  return (
+    <select value={value || ""} onChange={(e) => onChange(e.target.value || null)} style={{ ...inputStyle, cursor: "pointer" }}>
+      <option value="">{placeholder || "— Unassigned —"}</option>
+      {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+    </select>
+  );
+}
+
+function AddRow({ placeholder, onAdd }) {
+  const [v, setV] = useState("");
+  const go = () => { if (!v.trim()) return; onAdd(v.trim()); setV(""); };
+  return (
+    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+      <input style={inputStyle} placeholder={placeholder} value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()} />
+      <Btn kind="gold" small onClick={go}>Add</Btn>
+    </div>
+  );
+}
+
+function Card({ title, count, children }) {
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${C.lightGray}`, borderRadius: 10, padding: "18px 20px", marginBottom: 16 }}>
+      {title && (
+        <>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+            <h3 style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 14, letterSpacing: 1, textTransform: "uppercase", color: C.darkNavy, margin: 0 }}>{title}</h3>
+            {count !== undefined && <span style={{ fontSize: 12, color: C.steelBlue, fontWeight: 600 }}>{count}</span>}
+          </div>
+          <GoldRule mb={12} />
+        </>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Collapse({ title, count, accent, children, startOpen }) {
+  const [open, setOpen] = useState(!!startOpen);
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${C.lightGray}`, borderRadius: 10, marginBottom: 12, borderLeft: accent ? `4px solid ${accent}` : undefined, overflow: "hidden" }}>
+      <button onClick={() => setOpen(!open)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", padding: "14px 20px", cursor: "pointer", textAlign: "left" }}>
+        <span style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 14, letterSpacing: 1, textTransform: "uppercase", color: C.darkNavy }}>{title}</span>
+        {count !== undefined && <span style={{ fontFamily: FONT_BODY, fontSize: 12, color: C.steelBlue, fontWeight: 600 }}>{count}</span>}
+        <span style={{ marginLeft: "auto", color: C.steelBlue, fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div style={{ padding: "0 20px 18px" }}>{children}</div>}
+    </div>
+  );
+}
+
+/* ---------- app ---------- */
+
+function GrowthBoard() {
+  const [data, setData] = useState(null);
+  const [view, setView] = useState("moves"); // moves | meetings | members
+  const [activeMoveId, setActiveMoveId] = useState(null);
+  const [activeMeetingId, setActiveMeetingId] = useState(null);
+  const [saving, setSaving] = useState("idle");
+  const saveTimer = useRef(null);
+
+  useEffect(() => {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap";
+    document.head.appendChild(l);
+    return () => document.head.removeChild(l);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY);
+        setData(res && res.value ? JSON.parse(res.value) : seed());
+      } catch { setData(seed()); }
+    })();
+  }, []);
+
+  const persist = useCallback((next) => {
+    setSaving("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await window.storage.set(STORAGE_KEY, JSON.stringify(next));
+        setSaving("saved");
+        setTimeout(() => setSaving("idle"), 1400);
+      } catch { setSaving("error"); }
+    }, 500);
+  }, []);
+
+  const update = (fn) => setData((prev) => { const next = fn(structuredClone(prev)); persist(next); return next; });
+
+  if (!data) return <div style={{ fontFamily: FONT_BODY, color: C.steelBlue, padding: 40, textAlign: "center" }}>Loading board…</div>;
+
+  const memberName = (id) => data.members.find((m) => m.id === id)?.name || "—";
+
+  /* mutations */
+  const addMove = () => {
+    const o = { id: uid(), title: "New Move", stage: "New", owner: null, assigned: null, followUp: "", due: "", problem: "", solution: "", resultsNotes: "", impactType: "Top Line", revenueImpact: "", risks: "", notes: "", attachments: [], createdAt: today() };
+    update((d) => { d.moves.unshift(o); return d; });
+    setActiveMoveId(o.id);
+    setView("moves");
+  };
+  const patchMove = (id, patch) => update((d) => { Object.assign(d.moves.find((x) => x.id === id), patch); return d; });
+  const deleteMove = (id) => update((d) => {
+    d.moves = d.moves.filter((x) => x.id !== id);
+    d.tasks = d.tasks.filter((t) => t.moveId !== id);
+    d.meetings.forEach((m) => (m.moveIds = m.moveIds.filter((x) => x !== id)));
+    return d;
+  });
+
+  const addTask = (task) => update((d) => { d.tasks.push({ id: uid(), assignees: [], other: "", due: "", status: "Open", moveId: null, ...task }); return d; });
+  const patchTask = (id, patch) => update((d) => { Object.assign(d.tasks.find((x) => x.id === id), patch); return d; });
+  const deleteTask = (id) => update((d) => { d.tasks = d.tasks.filter((t) => t.id !== id); return d; });
+  const toggleAssignee = (taskId, memberId) => update((d) => {
+    const t = d.tasks.find((x) => x.id === taskId);
+    t.assignees = t.assignees.includes(memberId) ? t.assignees.filter((a) => a !== memberId) : [...t.assignees, memberId];
+    return d;
+  });
+
+  const addMeeting = () => {
+    const m = { id: uid(), title: "New Meeting", date: today(), agenda: [], moveIds: [], decisions: [], notes: "" };
+    update((d) => { d.meetings.unshift(m); return d; });
+    setActiveMeetingId(m.id);
+    setView("meetings");
+  };
+  const patchMeeting = (id, patch) => update((d) => { Object.assign(d.meetings.find((x) => x.id === id), patch); return d; });
+  const deleteMeeting = (id) => update((d) => { d.meetings = d.meetings.filter((m) => m.id !== id); return d; });
+
+  const activeCount = data.moves.filter((o) => !["Resolved", "Closed"].includes(o.stage)).length;
+  const nav = [
+    { key: "moves", label: "Moves", badge: activeCount },
+    { key: "meetings", label: "Meetings", badge: data.meetings.length },
+    { key: "members", label: "Members", badge: data.members.length },
+  ];
+  const activeMove = data.moves.find((o) => o.id === activeMoveId);
+
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f7f8fa", fontFamily: FONT_BODY, color: C.deepNavy }}>
+      <aside style={{ width: 236, background: C.deepNavy, color: "#fff", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+        <div style={{ padding: "24px 20px 16px" }}>
+          <div style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 22, letterSpacing: 1 }}>GrowthBoard</div>
+          <div style={{ fontFamily: FONT_HEAD, fontSize: 11.5, letterSpacing: 2.5, color: C.gold, textTransform: "uppercase" }}>Opportunity Tracker</div>
+          <div style={{ fontSize: 10, color: C.steelBlue, marginTop: 4 }}>v1.1</div>
+        </div>
+        <div style={{ height: 2, background: C.gold, margin: "0 20px 14px" }} />
+        {nav.map((n) => (
+          <button key={n.key} onClick={() => { setView(n.key); setActiveMoveId(null); setActiveMeetingId(null); }}
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: view === n.key ? C.darkNavy : "transparent", border: "none", borderLeft: `3px solid ${view === n.key ? C.gold : "transparent"}`, color: "#fff", fontFamily: FONT_HEAD, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", padding: "12px 18px", cursor: "pointer", textAlign: "left" }}>
+            {n.label}
+            <span style={{ fontFamily: FONT_BODY, fontSize: 11, fontWeight: 700, background: view === n.key ? C.gold : C.darkNavy, color: view === n.key ? C.deepNavy : C.lightBlue, borderRadius: 999, padding: "2px 8px" }}>{n.badge}</span>
+          </button>
+        ))}
+        <div style={{ flex: 1 }} />
+        <div style={{ padding: 16, display: "grid", gap: 8 }}>
+          <Btn kind="gold" onClick={addMove}>+ Move</Btn>
+          <Btn kind="ghost" style={{ color: C.lightBlue, borderColor: C.brandBlue }} onClick={addMeeting}>+ Meeting</Btn>
+        </div>
+        <div style={{ padding: "0 20px 14px", fontSize: 10, color: C.steelBlue }}>
+          {saving === "saving" ? "Saving…" : saving === "saved" ? "All changes saved" : saving === "error" ? "⚠ Save failed" : " "}
+        </div>
+      </aside>
+
+      <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto" }}>
+        {activeMove ? (
+          <MoveDetail move={activeMove} data={data} patchMove={patchMove}
+            deleteMove={(id) => { deleteMove(id); setActiveMoveId(null); }}
+            addTask={addTask} patchTask={patchTask} deleteTask={deleteTask} toggleAssignee={toggleAssignee}
+            back={() => setActiveMoveId(null)} />
+        ) : view === "moves" ? (
+          <MovesList moves={data.moves} tasks={data.tasks} memberName={memberName}
+            onOpen={setActiveMoveId} patchMove={patchMove} onNew={addMove} />
+        ) : view === "meetings" && !activeMeetingId ? (
+          <MeetingsList meetings={data.meetings} onOpen={setActiveMeetingId} onNew={addMeeting} />
+        ) : view === "meetings" && activeMeetingId ? (
+          <MeetingDetail meeting={data.meetings.find((m) => m.id === activeMeetingId)} data={data}
+            patchMeeting={patchMeeting} deleteMeeting={(id) => { deleteMeeting(id); setActiveMeetingId(null); }}
+            openMove={(id) => setActiveMoveId(id)} back={() => setActiveMeetingId(null)} />
+        ) : (
+          <MembersView data={data} update={update} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* ---------- Moves list ---------- */
+
+function MovesList({ moves, tasks, memberName, onOpen, patchMove, onNew }) {
+  const [filter, setFilter] = useState("Active");
+  const filtered = moves.filter((o) =>
+    filter === "All" ? true : filter === "Active" ? !["Resolved", "Closed"].includes(o.stage) : o.stage === filter
+  );
+  const th = { fontFamily: FONT_HEAD, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "#fff", background: C.darkNavy, padding: "9px 12px", textAlign: "left" };
+  const td = { padding: "9px 12px", fontSize: 13, verticalAlign: "middle" };
+  const overdue = (d) => d && d < today();
+
+  return (
+    <div style={{ maxWidth: 1040 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div>
+          <h1 style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 26, color: C.darkNavy, margin: "0 0 4px" }}>Moves</h1>
+          <GoldRule mb={6} />
+          <div style={{ fontSize: 12.5, color: C.steelBlue, marginBottom: 14 }}>Your living growth opportunities — problem to solution to revenue impact.</div>
+        </div>
+        <Btn kind="gold" onClick={onNew}>+ Move</Btn>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {["Active", "All", ...STAGES].map((f) => (
+          <button key={f} onClick={() => setFilter(f)} style={{ fontFamily: FONT_BODY, fontSize: 12, fontWeight: 700, padding: "6px 14px", borderRadius: 999, border: `1px solid ${filter === f ? C.darkNavy : C.lightGray}`, background: filter === f ? C.darkNavy : "#fff", color: filter === f ? "#fff" : C.brandBlue, cursor: "pointer" }}>{f}</button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <Card>
+          <div style={{ color: C.steelBlue, fontSize: 13 }}>No moves in this view yet. Hit <strong>+ Move</strong> to log your first opportunity.</div>
+        </Card>
+      ) : (
+        <div style={{ background: "#fff", border: `1px solid ${C.lightGray}`, borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>
+                <th style={th}>Move</th><th style={th}>Owner</th><th style={th}>Assigned</th>
+                <th style={th}>Follow-up</th><th style={th}>Due</th><th style={th}>Impact</th>
+                <th style={th}>Stage</th><th style={th}>Tasks</th>
+              </tr></thead>
+              <tbody>
+                {filtered.map((o, i) => {
+                  const oTasks = tasks.filter((t) => t.moveId === o.id);
+                  const open = oTasks.filter((t) => t.status !== "Done").length;
+                  return (
+                    <tr key={o.id} style={{ background: i % 2 ? "#fafbfd" : "#fff", cursor: "pointer" }} onClick={() => onOpen(o.id)}>
+                      <td style={{ ...td, fontWeight: 700, color: C.darkNavy }}>{o.title}</td>
+                      <td style={td}>{memberName(o.owner)}</td>
+                      <td style={td}>{memberName(o.assigned)}</td>
+                      <td style={{ ...td, color: overdue(o.followUp) ? C.red : C.deepNavy, fontWeight: overdue(o.followUp) ? 700 : 400 }}>{o.followUp || "—"}</td>
+                      <td style={{ ...td, color: overdue(o.due) ? C.red : C.deepNavy, fontWeight: overdue(o.due) ? 700 : 400 }}>{o.due || "—"}</td>
+                      <td style={{ ...td, fontSize: 12 }}>
+                        {o.revenueImpact ? <span style={{ fontWeight: 700, color: C.green }}>{o.revenueImpact}</span> : <span style={{ color: C.steelBlue }}>—</span>}
+                        <span style={{ color: C.steelBlue }}> · {o.impactType}</span>
+                      </td>
+                      <td style={td} onClick={(e) => e.stopPropagation()}>
+                        <Pill value={o.stage} options={STAGES} onChange={(s) => patchMove(o.id, { stage: s })} colorMap={stageColors} />
+                      </td>
+                      <td style={{ ...td, fontSize: 12, color: open ? C.brandBlue : C.steelBlue, fontWeight: 700 }}>{open}/{oTasks.length}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Move detail ---------- */
+
+function MoveDetail({ move, data, patchMove, deleteMove, addTask, patchTask, deleteTask, toggleAssignee, back }) {
+  const o = move;
+  const moveTasks = data.tasks.filter((t) => t.moveId === o.id);
+  const linkedMeetings = data.meetings.filter((m) => m.moveIds.includes(o.id));
+  const bigText = (field, placeholder, rows = 3) => (
+    <textarea value={o[field]} onChange={(e) => patchMove(o.id, { [field]: e.target.value })} placeholder={placeholder} rows={rows} style={{ ...inputStyle, resize: "vertical", lineHeight: 1.55 }} />
+  );
+
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <button onClick={back} style={{ background: "none", border: "none", color: C.brightBlue, fontFamily: FONT_BODY, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0, marginBottom: 10 }}>← All moves</button>
+
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 6 }}>
+        <input value={o.title} onChange={(e) => patchMove(o.id, { title: e.target.value })} style={{ ...inputStyle, fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 24, color: C.darkNavy, border: "none", background: "transparent", padding: 0 }} />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Pill value={o.stage} options={STAGES} onChange={(s) => patchMove(o.id, { stage: s })} colorMap={stageColors} />
+          <Btn kind="danger" small onClick={() => window.confirm("Delete this move and its tasks?") && deleteMove(o.id)}>Delete</Btn>
+        </div>
+      </div>
+      <GoldRule mb={18} />
+
+      <Card>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+          <div><label style={labelStyle}>Owner</label><MemberSelect value={o.owner} members={data.members} onChange={(v) => patchMove(o.id, { owner: v })} placeholder="Select owner" /></div>
+          <div><label style={labelStyle}>Assigned (action / review)</label><MemberSelect value={o.assigned} members={data.members} onChange={(v) => patchMove(o.id, { assigned: v })} /></div>
+          <div><label style={labelStyle}>Follow-up Date</label><input type="date" value={o.followUp} onChange={(e) => patchMove(o.id, { followUp: e.target.value })} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Due Date</label><input type="date" value={o.due} onChange={(e) => patchMove(o.id, { due: e.target.value })} style={inputStyle} /></div>
+        </div>
+      </Card>
+
+      <Collapse title="Problem" accent={C.red} startOpen={!o.problem}>{bigText("problem", "What's broken, blocked, or at stake?")}</Collapse>
+      <Collapse title="Solution" accent={C.brandBlue} startOpen={!o.solution}>{bigText("solution", "The proposed path forward.")}</Collapse>
+      <Collapse title="Results — Revenue Impact" accent={C.green} startOpen={!o.resultsNotes && !o.revenueImpact}>
+        <div style={{ display: "grid", gridTemplateColumns: "180px 200px", gap: 14, marginBottom: 12 }}>
+          <div>
+            <label style={labelStyle}>Impact Type</label>
+            <select value={o.impactType} onChange={(e) => patchMove(o.id, { impactType: e.target.value })} style={{ ...inputStyle, cursor: "pointer" }}>
+              {IMPACT_TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Revenue Impact ($)</label>
+            <input value={o.revenueImpact} onChange={(e) => patchMove(o.id, { revenueImpact: e.target.value })} placeholder="e.g. $2.4M" style={inputStyle} />
+          </div>
+        </div>
+        {bigText("resultsNotes", "Expected results and how we'll measure them.", 2)}
+      </Collapse>
+      <Collapse title="Risks — If Not Solved" accent={C.gold} startOpen={!o.risks}>{bigText("risks", "What happens if this stalls?")}</Collapse>
+
+      <Collapse title="Tasks" count={moveTasks.length} startOpen={true}>
+        {moveTasks.map((t) => (
+          <TaskRow key={t.id} task={t} members={data.members} patchTask={patchTask} deleteTask={deleteTask} toggleAssignee={toggleAssignee} />
+        ))}
+        <AddRow placeholder="Add a task for this move…" onAdd={(title) => addTask({ title, moveId: o.id })} />
+      </Collapse>
+
+      <Collapse title="Meetings" count={linkedMeetings.length}>
+        {linkedMeetings.length === 0 && <div style={{ fontSize: 13, color: C.steelBlue }}>Not yet covered in a meeting. Link it from a meeting's "Moves Covered."</div>}
+        {linkedMeetings.map((m) => (
+          <div key={m.id} style={{ fontSize: 13, padding: "6px 0", borderBottom: `1px solid ${C.lightGray}` }}>
+            <strong style={{ color: C.darkNavy }}>{m.title}</strong> <span style={{ color: C.steelBlue }}>· {m.date}</span>
+          </div>
+        ))}
+      </Collapse>
+
+      <Collapse title="Notes">
+        <textarea value={o.notes} onChange={(e) => patchMove(o.id, { notes: e.target.value })} placeholder="Running notes on this move…" rows={6} style={{ ...inputStyle, resize: "vertical", lineHeight: 1.55 }} />
+      </Collapse>
+
+      <Collapse title="Files & Backup" count={o.attachments.length}>
+        {o.attachments.map((a) => (
+          <div key={a.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "7px 0", borderBottom: `1px solid ${C.lightGray}` }}>
+            <span style={{ fontSize: 15 }}>📎</span>
+            <input value={a.label} onChange={(e) => patchMove(o.id, { attachments: o.attachments.map((x) => (x.id === a.id ? { ...x, label: e.target.value } : x)) })} placeholder="File name" style={{ ...inputStyle, border: "none", background: "transparent", padding: 0, fontWeight: 600, flex: 1 }} />
+            <input value={a.url} onChange={(e) => patchMove(o.id, { attachments: o.attachments.map((x) => (x.id === a.id ? { ...x, url: e.target.value } : x)) })} placeholder="Paste a link…" style={{ ...inputStyle, width: 260, fontSize: 12 }} />
+            {a.url && <a href={a.url} target="_blank" rel="noreferrer" style={{ color: C.brightBlue, fontSize: 12, fontWeight: 700 }}>Open</a>}
+            <button onClick={() => patchMove(o.id, { attachments: o.attachments.filter((x) => x.id !== a.id) })} style={{ background: "none", border: "none", color: C.steelBlue, cursor: "pointer" }}>✕</button>
+          </div>
+        ))}
+        <AddRow placeholder="Add backup file (name, then paste the link)…" onAdd={(label) => patchMove(o.id, { attachments: [...o.attachments, { id: uid(), label, url: "" }] })} />
+      </Collapse>
+    </div>
+  );
+}
+
+/* ---------- Task row ---------- */
+
+function TaskRow({ task, members, patchTask, deleteTask, toggleAssignee }) {
+  return (
+    <div style={{ border: `1px solid ${C.lightGray}`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+        <input value={task.title} onChange={(e) => patchTask(task.id, { title: e.target.value })} style={{ ...inputStyle, border: "none", background: "transparent", padding: 0, fontWeight: 600, flex: 1, minWidth: 180, textDecoration: task.status === "Done" ? "line-through" : "none", color: task.status === "Done" ? C.steelBlue : C.deepNavy }} />
+        <input type="date" value={task.due} onChange={(e) => patchTask(task.id, { due: e.target.value })} style={{ ...inputStyle, width: 150, padding: "4px 8px", fontSize: 12 }} />
+        <Pill value={task.status} options={TASK_STATUSES} onChange={(s) => patchTask(task.id, { status: s })} colorMap={taskColors} />
+        <button onClick={() => deleteTask(task.id)} style={{ background: "none", border: "none", color: C.steelBlue, cursor: "pointer" }}>✕</button>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+        {members.length === 0 && <span style={{ fontSize: 11.5, color: C.steelBlue }}>Add members to assign this task, or type names →</span>}
+        {members.map((m) => {
+          const on = task.assignees.includes(m.id);
+          return (
+            <button key={m.id} onClick={() => toggleAssignee(task.id, m.id)} style={{ fontFamily: FONT_BODY, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, cursor: "pointer", border: `1px solid ${on ? C.darkNavy : C.lightGray}`, background: on ? C.darkNavy : "#fff", color: on ? "#fff" : C.steelBlue }}>
+              {m.name}
+            </button>
+          );
+        })}
+        <input value={task.other} onChange={(e) => patchTask(task.id, { other: e.target.value })} placeholder="+ others (type names)" style={{ ...inputStyle, width: 170, padding: "4px 10px", fontSize: 11, borderRadius: 999 }} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Meetings ---------- */
+
+function MeetingsList({ meetings, onOpen, onNew }) {
+  const sorted = [...meetings].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  return (
+    <div style={{ maxWidth: 860 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 26, color: C.darkNavy, margin: "0 0 4px" }}>Meetings</h1>
+          <GoldRule mb={20} />
+        </div>
+        <Btn kind="gold" onClick={onNew}>+ Meeting</Btn>
+      </div>
+      {sorted.length === 0 && (
+        <Card><div style={{ color: C.steelBlue, fontSize: 13 }}>No meetings yet. Hit <strong>+ Meeting</strong> to track your first one.</div></Card>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+        {sorted.map((m) => (
+          <button key={m.id} onClick={() => onOpen(m.id)} style={{ textAlign: "left", background: "#fff", border: `1px solid ${C.lightGray}`, borderTop: `3px solid ${C.gold}`, borderRadius: 10, padding: "16px 18px", cursor: "pointer" }}>
+            <div style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 16, color: C.darkNavy }}>{m.title}</div>
+            <div style={{ fontSize: 12, color: C.steelBlue, margin: "2px 0 10px" }}>{m.date}</div>
+            <div style={{ display: "flex", gap: 12, fontSize: 12, color: C.brandBlue, fontWeight: 600 }}>
+              <span>{m.agenda.length} agenda</span>
+              <span>{m.moveIds.length} moves</span>
+              <span>{m.decisions.length} decisions</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MeetingDetail({ meeting, data, patchMeeting, deleteMeeting, openMove, back }) {
+  const m = meeting;
+  if (!m) return null;
+  const toggleMove = (moveId) => patchMeeting(m.id, { moveIds: m.moveIds.includes(moveId) ? m.moveIds.filter((x) => x !== moveId) : [...m.moveIds, moveId] });
+  const patchList = (list, id, patch) => patchMeeting(m.id, { [list]: m[list].map((x) => (x.id === id ? { ...x, ...patch } : x)) });
+  const dropFrom = (list, id) => patchMeeting(m.id, { [list]: m[list].filter((x) => x.id !== id) });
+
+  return (
+    <div style={{ maxWidth: 860 }}>
+      <button onClick={back} style={{ background: "none", border: "none", color: C.brightBlue, fontFamily: FONT_BODY, fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0, marginBottom: 10 }}>← All meetings</button>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 6 }}>
+        <input value={m.title} onChange={(e) => patchMeeting(m.id, { title: e.target.value })} style={{ ...inputStyle, fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 24, color: C.darkNavy, border: "none", background: "transparent", padding: 0 }} />
+        <Btn kind="danger" small onClick={() => window.confirm("Delete this meeting?") && deleteMeeting(m.id)}>Delete</Btn>
+      </div>
+      <GoldRule mb={10} />
+      <input type="date" value={m.date} onChange={(e) => patchMeeting(m.id, { date: e.target.value })} style={{ ...inputStyle, width: 170, marginBottom: 18 }} />
+
+      <Card title="Agenda" count={m.agenda.length}>
+        {m.agenda.map((a, i) => (
+          <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: `1px solid ${C.lightGray}` }}>
+            <span style={{ fontFamily: FONT_HEAD, fontWeight: 600, fontSize: 12, color: C.gold, width: 22 }}>{String(i + 1).padStart(2, "0")}</span>
+            <input type="checkbox" checked={!!a.done} onChange={(e) => patchList("agenda", a.id, { done: e.target.checked })} />
+            <input value={a.text} onChange={(e) => patchList("agenda", a.id, { text: e.target.value })} style={{ ...inputStyle, border: "none", background: "transparent", padding: 0, textDecoration: a.done ? "line-through" : "none", color: a.done ? C.steelBlue : C.deepNavy }} />
+            <button onClick={() => dropFrom("agenda", a.id)} style={{ background: "none", border: "none", color: C.steelBlue, cursor: "pointer" }}>✕</button>
+          </div>
+        ))}
+        <AddRow placeholder="Add agenda item…" onAdd={(text) => patchMeeting(m.id, { agenda: [...m.agenda, { id: uid(), text, done: false }] })} />
+      </Card>
+
+      <Card title="Moves Covered" count={m.moveIds.length}>
+        {data.moves.length === 0 && <div style={{ fontSize: 13, color: C.steelBlue }}>No moves exist yet.</div>}
+        {data.moves.map((o) => {
+          const on = m.moveIds.includes(o.id);
+          return (
+            <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: `1px solid ${C.lightGray}` }}>
+              <input type="checkbox" checked={on} onChange={() => toggleMove(o.id)} />
+              <button onClick={() => openMove(o.id)} style={{ background: "none", border: "none", color: on ? C.darkNavy : C.steelBlue, fontWeight: on ? 700 : 400, fontFamily: FONT_BODY, fontSize: 13, cursor: "pointer", padding: 0, textAlign: "left" }}>{o.title}</button>
+            </div>
+          );
+        })}
+      </Card>
+
+      <Card title="Key Decisions" count={m.decisions.length}>
+        {m.decisions.map((d) => (
+          <div key={d.id} style={{ display: "flex", gap: 10, alignItems: "center", background: C.lightBlue, borderLeft: `4px solid ${C.gold}`, borderRadius: 6, padding: "8px 12px", marginBottom: 8 }}>
+            <input value={d.text} onChange={(e) => patchList("decisions", d.id, { text: e.target.value })} style={{ ...inputStyle, border: "none", background: "transparent", padding: 0, fontWeight: 600, color: C.darkNavy }} />
+            <button onClick={() => dropFrom("decisions", d.id)} style={{ background: "none", border: "none", color: C.brandBlue, cursor: "pointer" }}>✕</button>
+          </div>
+        ))}
+        <AddRow placeholder="Record a decision…" onAdd={(text) => patchMeeting(m.id, { decisions: [...m.decisions, { id: uid(), text }] })} />
+      </Card>
+
+      <Card title="Rough Notes">
+        <textarea value={m.notes} onChange={(e) => patchMeeting(m.id, { notes: e.target.value })} placeholder="Free-form notes from the room…" rows={7} style={{ ...inputStyle, resize: "vertical", lineHeight: 1.55 }} />
+      </Card>
+    </div>
+  );
+}
+
+/* ---------- Members ---------- */
+
+function MembersView({ data, update }) {
+  const addMember = (name) => update((d) => { d.members.push({ id: uid(), name, title: "", loc: "" }); return d; });
+  const patchMember = (id, patch) => update((d) => { Object.assign(d.members.find((m) => m.id === id), patch); return d; });
+  const removeMember = (id) => update((d) => {
+    d.members = d.members.filter((m) => m.id !== id);
+    d.moves.forEach((o) => { if (o.owner === id) o.owner = null; if (o.assigned === id) o.assigned = null; });
+    d.tasks.forEach((t) => (t.assignees = t.assignees.filter((a) => a !== id)));
+    return d;
+  });
+
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <h1 style={{ fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 26, color: C.darkNavy, margin: "0 0 4px" }}>Members</h1>
+      <GoldRule mb={16} />
+      <Card title="Members" count={data.members.length}>
+        {data.members.length === 0 && (
+          <div style={{ fontSize: 13, color: C.steelBlue, marginBottom: 4 }}>No members yet — add your team below. Members power the Owner, Assigned, and task assignment fields.</div>
+        )}
+        {data.members.map((m) => (
+          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.lightGray}` }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.darkNavy, color: C.gold, fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {m.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+            <input value={m.name} onChange={(e) => patchMember(m.id, { name: e.target.value })} style={{ ...inputStyle, border: "none", background: "transparent", padding: 0, fontWeight: 700, width: 170 }} />
+            <input value={m.title} onChange={(e) => patchMember(m.id, { title: e.target.value })} placeholder="Title" style={{ ...inputStyle, border: "none", background: "transparent", padding: 0, fontSize: 12.5, color: C.brandBlue, flex: 1 }} />
+            <input value={m.loc} onChange={(e) => patchMember(m.id, { loc: e.target.value })} placeholder="Location" style={{ ...inputStyle, border: "none", background: "transparent", padding: 0, fontSize: 12, color: C.steelBlue, width: 140 }} />
+            <button onClick={() => window.confirm(`Remove ${m.name}? They'll be unassigned everywhere.`) && removeMember(m.id)} style={{ background: "none", border: "none", color: C.steelBlue, cursor: "pointer" }}>✕</button>
+          </div>
+        ))}
+        <AddRow placeholder="Add a member…" onAdd={addMember} />
+      </Card>
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<GrowthBoard />);
+
+</script>
+</body>
+</html>
