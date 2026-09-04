@@ -1,192 +1,463 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex, nofollow">
-<title>Growth Apps</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<meta name="description" content="FSG Growth Organization weekly CRM hygiene scoreboard — batting average on clean Engage opportunities.">
+<title>Closers vs. The Blanks</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --deep-navy: #0b1421;
-    --dark-navy: #133865;
-    --brand-blue: #365aa0;
-    --steel-blue: #718dbc;
-    --light-blue: #c5d9fa;
-    --light-gray: #ededed;
-    --gold: #ebb018;
-    --bright-blue: #4e84de;
-  }
+:root{
+  --deep:#0b1421; --navy:#133865; --brand:#365aa0; --steel:#718dbc;
+  --ltblue:#c5d9fa; --gold:#ebb018; --gold-dim:rgba(235,176,24,.16);
+  --bulb-glow:0 0 6px rgba(235,176,24,.85), 0 0 18px rgba(235,176,24,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 500px at 50% -10%, #1a2c47 0%, transparent 60%),
+    #060b13;
+  color:var(--ltblue);
+  font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  min-height:100vh; padding:28px 14px 60px; display:flex; flex-direction:column; align-items:center;
+}
+.marquee{
+  font-family:'Oswald',Impact,'Arial Black',sans-serif;
+  color:#fff; letter-spacing:.35em; font-size:clamp(15px,2.6vw,22px); font-weight:700;
+  text-align:center; margin-bottom:6px;
+}
+.marquee small{display:block;color:var(--steel);letter-spacing:.22em;font-size:.55em;font-weight:500;margin-top:4px}
+.board{
+  width:min(980px,100%);
+  background:linear-gradient(180deg,#0e1b30 0%, var(--deep) 55%, #081020 100%);
+  border:3px solid #223a5e; border-radius:14px;
+  box-shadow:0 0 0 6px #0a1524, 0 18px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(197,217,250,.15);
+  padding:22px 22px 18px; position:relative; margin-top:14px;
+}
+.board::before,.board::after{
+  content:""; position:absolute; top:10px; bottom:10px; width:6px;
+  background:repeating-linear-gradient(180deg,#2a4570 0 6px,transparent 6px 34px);
+  border-radius:3px; opacity:.5;
+}
+.board::before{left:8px}.board::after{right:8px}
+.matchup{
+  display:flex; justify-content:center; align-items:baseline; gap:14px;
+  font-family:'Oswald',sans-serif; margin-bottom:14px; flex-wrap:wrap;
+}
+.matchup .team{color:#fff;font-size:clamp(20px,4vw,34px);font-weight:700;letter-spacing:.06em}
+.matchup .vs{color:var(--gold);font-size:clamp(13px,2vw,18px);letter-spacing:.2em}
+.matchup .team.blanks{color:var(--steel)}
+.gamestat{text-align:center;color:var(--steel);font-size:15px;letter-spacing:.08em;margin-bottom:16px;min-height:18px}
+.gamestat b{color:var(--ltblue)}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+.linescore{overflow-x:auto;border:1px solid #22406b;border-radius:8px;background:#091426}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:8px 6px;text-align:center;border-right:1px solid #16294a;font-variant-numeric:tabular-nums}
+th{color:var(--steel);font-weight:600;font-size:13px;letter-spacing:.14em;border-bottom:1px solid #22406b}
+td{font-family:'Oswald',monospace;font-size:20px}
+tr th:first-child, tr td:first-child{
+  text-align:left;padding-left:14px;min-width:110px;
+  font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:.12em;color:#fff;
+}
+tr.blanks td:first-child{color:var(--steel)}
+td.lit{color:var(--gold);text-shadow:var(--bulb-glow)}
+td.unlit{color:var(--gold-dim)}
+td.now{background:rgba(235,176,24,.07)}
 
-  body {
-    font-family: 'Open Sans', Arial, sans-serif;
-    background: var(--deep-navy);
-    color: #fff;
-    min-height: 100vh;
-  }
+.bigstats{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+  gap:10px; margin-top:16px;
+}
+.stat{
+  background:#091426;border:1px solid #22406b;border-radius:8px;
+  padding:10px 8px 12px;text-align:center;
+}
+.stat .lbl{color:var(--steel);font-size:12px;letter-spacing:.18em;margin-bottom:4px}
+.stat .val{
+  font-family:'Oswald',monospace;color:var(--gold);text-shadow:var(--bulb-glow);
+  font-size:clamp(18px,2.8vw,28px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1;
+}
+.stat.avg .val{font-size:clamp(30px,4.6vw,44px)}
+.stat .sub{color:var(--steel);font-size:12px;margin-top:5px;min-height:14px}
+.trend-up{color:#7fd18a}.trend-down{color:#e58b8b}
 
-  /* ---------- HERO ---------- */
-  .hero {
-    background: linear-gradient(160deg, var(--deep-navy) 0%, var(--dark-navy) 100%);
-    padding: 72px 24px 56px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--gold);
-  }
-  .eyebrow {
-    font-family: 'Oswald', Arial, sans-serif;
-    font-weight: 500;
-    font-size: 13px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 14px;
-  }
-  .hero h1 {
-    font-family: 'Oswald', Arial, sans-serif;
-    font-weight: 700;
-    font-size: clamp(36px, 6vw, 58px);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    line-height: 1.1;
-  }
-  .hero p {
-    margin-top: 16px;
-    font-size: 16px;
-    font-weight: 300;
-    color: var(--light-blue);
-    max-width: 520px;
-    margin-left: auto;
-    margin-right: auto;
-  }
+.panel{
+  width:min(980px,100%); margin-top:22px;
+  background:#0c1728;border:1px solid #22406b;border-radius:12px;padding:18px;
+}
+.panel h2{font-family:'Oswald',sans-serif;color:#fff;font-size:17px;letter-spacing:.12em;margin-bottom:4px}
+.panel p.note{color:var(--steel);font-size:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label{display:block;font-size:13px;color:var(--ltblue);letter-spacing:.06em;margin-bottom:4px}
+input{
+  width:100%;background:#091120;border:1px solid #2a4570;border-radius:6px;
+  color:var(--gold);font-family:'Oswald',monospace;font-size:17px;padding:8px 10px;
+  font-variant-numeric:tabular-nums;
+}
+input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold)}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+button{
+  font-family:'Oswald',sans-serif;letter-spacing:.1em;font-size:14px;font-weight:600;
+  border-radius:6px;padding:10px 18px;cursor:pointer;border:1px solid transparent;
+}
+button.primary{background:var(--gold);color:var(--deep)}
+button.primary:hover{background:#f7c236}
+button.ghost{background:transparent;color:var(--steel);border-color:#2a4570}
+button.ghost:hover{color:var(--ltblue);border-color:var(--steel)}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.msg{font-size:14px;color:var(--steel)}
+.msg.ok{color:#7fd18a}
+.msg.err{color:#e58b8b}
 
-  /* ---------- APP GRID ---------- */
-  .grid-wrap {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 56px 24px 80px;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
-  }
+details.rules{width:min(980px,100%);margin-top:16px}
+details.rules summary{
+  cursor:pointer;font-family:'Oswald',sans-serif;color:var(--gold);letter-spacing:.14em;
+  font-size:15px;padding:10px 4px;list-style:none;
+}
+details.rules summary::before{content:"\25B8  ";}
+details.rules[open] summary::before{content:"\25BE  ";}
+details.rules summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+.rulebook{
+  background:#0c1728;border:1px solid #22406b;border-radius:12px;padding:6px 18px 8px;
+}
+.rulebook dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 18px;padding:12px 0}
+.rulebook dt{font-family:'Oswald',sans-serif;color:#fff;letter-spacing:.1em;font-size:14px;white-space:nowrap}
+.rulebook dd{color:var(--steel);font-size:15px;line-height:1.35}
+.rulebook dd b{color:var(--ltblue);font-weight:600}
+@media (max-width:560px){.rulebook dl{grid-template-columns:1fr}.rulebook dt{margin-top:8px}}
+@media (prefers-reduced-motion:no-preference){
+  .flicker{animation:flick .9s ease-out 1}
+  @keyframes flick{0%{opacity:0}30%{opacity:.9}42%{opacity:.3}55%{opacity:1}70%{opacity:.7}100%{opacity:1}}
+}
+footer{color:#3a5170;font-size:12px;letter-spacing:.1em;margin-top:26px;text-align:center}
 
-  .card {
-    display: block;
-    text-decoration: none;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(197, 217, 250, 0.15);
-    border-radius: 10px;
-    padding: 28px 26px 24px;
-    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-    position: relative;
-  }
-  .card:hover {
-    transform: translateY(-4px);
-    border-color: var(--gold);
-    background: rgba(255, 255, 255, 0.07);
-  }
-  .card .tag {
-    display: inline-block;
-    font-family: 'Oswald', Arial, sans-serif;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 12px;
-  }
-  .card h2 {
-    font-family: 'Oswald', Arial, sans-serif;
-    font-weight: 600;
-    font-size: 22px;
-    color: #fff;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-  }
-  .card p {
-    font-size: 14px;
-    font-weight: 300;
-    line-height: 1.55;
-    color: var(--steel-blue);
-  }
-  .card .launch {
-    display: inline-block;
-    margin-top: 18px;
-    font-family: 'Oswald', Arial, sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--bright-blue);
-  }
-  .card:hover .launch { color: var(--gold); }
-
-  /* ---------- FOOTER ---------- */
-  footer {
-    border-top: 1px solid rgba(197, 217, 250, 0.12);
-    padding: 28px 24px;
-    text-align: center;
-    font-size: 12px;
-    color: var(--steel-blue);
-  }
-  footer span { color: var(--gold); }
-
-  @media (prefers-reduced-motion: reduce) {
-    .card { transition: none; }
-    .card:hover { transform: none; }
-  }
+/* ---- batting order ---- */
+.order{width:min(980px,100%);margin-top:22px}
+.order-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.order-head h2{font-family:'Oswald',sans-serif;color:#fff;font-size:17px;letter-spacing:.12em}
+.order-head .sub{color:var(--steel);font-size:14px;margin-top:2px}
+.toggle{display:flex;border:1px solid #2a4570;border-radius:6px;overflow:hidden}
+.toggle button{border-radius:0;border:0;padding:7px 14px;background:transparent;color:var(--steel);font-size:13px}
+.toggle button[aria-pressed="true"]{background:var(--gold);color:var(--deep)}
+.order-wrap{overflow-x:auto;border:1px solid #22406b;border-radius:10px;background:#091426}
+table.order-tbl{border-collapse:collapse;width:100%;min-width:720px}
+table.order-tbl th{
+  position:sticky;top:0;background:#0c1728;z-index:1;cursor:pointer;user-select:none;
+  padding:9px 8px;font-size:12px;letter-spacing:.14em;color:var(--steel);
+  border-bottom:1px solid #22406b;white-space:nowrap;
+}
+table.order-tbl th:hover{color:var(--ltblue)}
+table.order-tbl th[aria-sort]:not([aria-sort="none"]){color:var(--gold)}
+table.order-tbl th .arw{opacity:.55;font-size:10px}
+table.order-tbl td{
+  padding:7px 8px;font-family:'Oswald',monospace;font-size:16px;color:var(--ltblue);
+  border-bottom:1px solid #12233d;border-right:0;text-align:right;font-variant-numeric:tabular-nums;
+}
+table.order-tbl th:not(:nth-child(2)){text-align:right}
+table.order-tbl th:nth-child(2){text-align:left}
+table.order-tbl tr:last-child td{border-bottom:0}
+table.order-tbl tbody tr:hover td{background:rgba(235,176,24,.05)}
+td.rank{text-align:right;color:var(--steel);font-size:14px;width:42px;padding-right:10px}
+td.who{
+  text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:17px;
+  color:#fff;letter-spacing:.03em;white-space:nowrap;
+}
+td.ba{color:var(--gold);text-shadow:var(--bulb-glow);font-size:18px}
+tr.leader td.rank{color:var(--gold);text-shadow:var(--bulb-glow)}
+tr.cold td.ba{color:var(--gold-dim);text-shadow:none}
+td.dim{color:#4d688f}
+.order-foot{color:#3a5170;font-size:13px;letter-spacing:.04em;margin-top:9px;text-align:right}
 </style>
 </head>
 <body>
+<div class="marquee">ENGAGE FIELD<small>FSG GROWTH ORGANIZATION — HOME OF THE CLOSERS</small></div>
 
-<header class="hero">
-  <div class="eyebrow">Built to Move Fast</div>
-  <h1>Growth Apps</h1>
-  <p>Pipeline, performance, and planning tools — all in one place.</p>
-</header>
-
-<main class="grid-wrap">
-  <div class="grid">
-
-    <!-- ============================================================
-         HOW TO ADD AN APP:
-         Copy one card block below, paste it, and change 3 things:
-           1. href      → your HTML filename (exact name, case matters)
-           2. <h2>      → the app name
-           3. <p>       → one-line description
-         Optional: change the tag (the small gold label).
-         ============================================================ -->
-
-    <a class="card" href="growthboard.html">
-      <span class="tag">Growth</span>
-      <h2>Growth Board</h2>
-      <p>The Growth Organization's live board — track priorities, pipeline, and performance in one view.</p>
-      <span class="launch">Launch &rarr;</span>
-    </a>
-
-    <!-- Next app: copy the block above, paste it here, and swap the
-         href filename, the name, and the one-liner. -->
-
-
+<div class="board flicker" id="board">
+  <div class="matchup">
+    <span class="team">FSG CLOSERS</span>
+    <span class="vs">VS</span>
+    <span class="team blanks">THE BLANKS</span>
   </div>
-</main>
+  <div class="gamestat" id="gamestat">Loading the season…</div>
 
-<footer>
-  Growth Apps <span>&bull;</span> Built with Claude
-</footer>
+  <div class="linescore">
+    <table aria-label="Weekly line score">
+      <thead><tr id="weekHead"></tr></thead>
+      <tbody>
+        <tr id="rowClosers"><td>CLOSERS</td></tr>
+        <tr id="rowBlanks" class="blanks"><td>BLANKS</td></tr>
+      </tbody>
+    </table>
+  </div>
 
+  <div class="bigstats">
+    <div class="stat avg"><div class="lbl">BATTING AVG</div><div class="val" id="sAvg">—</div><div class="sub" id="sTrend"></div></div>
+    <div class="stat"><div class="lbl">AT-BATS</div><div class="val" id="sAB">—</div><div class="sub">open opps</div></div>
+    <div class="stat"><div class="lbl">HITS</div><div class="val" id="sHits">—</div><div class="sub">all fields current</div></div>
+    <div class="stat"><div class="lbl">K</div><div class="val" id="sK">—</div><div class="sub">no close date</div></div>
+    <div class="stat"><div class="lbl">LOB</div><div class="val" id="sLOB">—</div><div class="sub">past-due close date</div></div>
+    <div class="stat"><div class="lbl">E</div><div class="val" id="sE">—</div><div class="sub">$0 / blank value</div></div>
+    <div class="stat"><div class="lbl">ON BASE</div><div class="val" id="sOB">—</div><div class="sub">$ in a real quarter</div></div>
+    <div class="stat"><div class="lbl">WINS</div><div class="val" id="sW">—</div><div class="sub" id="subW">closed won, all time</div></div>
+    <div class="stat"><div class="lbl">CORKED</div><div class="val" id="sCork">—</div><div class="sub" id="subCork">wins &le;14 days in Engage</div></div>
+  </div>
+</div>
+
+<details class="rules">
+  <summary>OFFICIAL RULEBOOK — HOW THE GAME IS SCORED</summary>
+  <div class="rulebook">
+    <dl>
+      <dt>HIT</dt><dd>An open opportunity with <b>every field that matters current</b>: follow-up date set, close date real and in the future, value above $0, touched in the last 90 days.</dd>
+      <dt>AT-BAT</dt><dd>Every open opportunity. Each one is a plate appearance — you own it, you swing at it.</dd>
+      <dt>BATTING AVG</dt><dd>Hits &divide; at-bats. <b>Minimum 30 at-bats to qualify</b> — below the bar you post a .000 until you carry a real book. No batting titles on two swings.</dd>
+      <dt>K — STRIKEOUT</dt><dd>Open opportunity with <b>no estimated close date</b>. These dollars can't land in any quarter until the field is fixed.</dd>
+      <dt>LOB</dt><dd>Left on base: close date already in the past, deal still open. Runners stranded.</dd>
+      <dt>E — ERROR</dt><dd>Open opportunity with <b>$0 or blank value</b> — invisible in every dollar roll-up. Enter $1 or a humble estimate.</dd>
+      <dt>ON BASE</dt><dd>Open dollars with a real, future close date — pipeline that can actually score in a quarter.</dd>
+      <dt>CORKED BAT</dt><dd>A Closed Won deal that lived <b>14 days or less in Engage</b> before closing — logged at the handshake, not run through the pipeline. A win-integrity flag, not a ranking stat.</dd>
+      <dt>SEASON</dt><dd>12 weeks on the board. Post your numbers every Friday from the Pipeline Report's Scoreboard tab. Sustained beats streaky — base hits win championships.</dd>
+    </dl>
+  </div>
+</details>
+
+<div class="panel">
+  <h2>Press box — post this week's numbers</h2>
+  <p class="note">Pull the totals from the Scoreboard tab of the Pipeline Report, punch them in, and post it. One entry per week; posting twice in the same week updates that inning. Numbers save in this browser, so post from the same machine each Friday.</p>
+  <div class="grid">
+    <div><label for="inAB">At-bats (open opps)</label><input id="inAB" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="inH">Hits (clean opps)</label><input id="inH" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="inK">K — no close date</label><input id="inK" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="inLOB">LOB — past due</label><input id="inLOB" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="inE">E — $0 value</label><input id="inE" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="inOB">On-base dollars</label><input id="inOB" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="inW">Wins (closed won)</label><input id="inW" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="inCork">Corked wins (&le;14 days)</label><input id="inCork" type="number" min="0" inputmode="numeric"></div>
+  </div>
+  <div class="actions">
+    <button class="primary" id="btnPost">Post this week</button>
+    <button class="ghost" id="btnUndo">Remove last week</button>
+    <button class="ghost" id="btnReset">Reset season</button>
+    <span class="msg" id="msg"></span>
+  </div>
+</div>
+
+<div class="order">
+  <div class="order-head">
+    <div>
+      <h2>THE BATTING ORDER</h2>
+      <div class="sub" id="orderSub">Every FSG owner in the 9/4 Engage export.</div>
+    </div>
+    <div class="toggle" role="group" aria-label="Which batters to show">
+      <button id="tgQual" aria-pressed="true">Qualified (30+ AB)</button>
+      <button id="tgAll" aria-pressed="false">All batters</button>
+    </div>
+  </div>
+  <div class="order-wrap">
+    <table class="order-tbl" id="orderTbl">
+      <thead><tr id="orderHead"></tr></thead>
+      <tbody id="orderBody"></tbody>
+    </table>
+  </div>
+  <div class="order-foot" id="orderFoot"></div>
+</div>
+
+<footer>BASE HITS WIN CHAMPIONSHIPS · A HIT = FOLLOW-UP SET · CLOSE DATE REAL · VALUE ENTERED · TOUCHED IN 90 DAYS</footer>
+
+<script>
+const KEY='closers-vs-blanks-season';
+const MAXWEEKS=12;
+const SEED=[
+  {label:'10/28',wk:'seed-1',ab:5151,h:223,k:3951,lob:848,e:1673,ob:444493351,w:5916,cork:271},
+  {label:'9/4',  wk:'seed-2',ab:4114,h:293,k:3083,lob:614,e:1188,ob:432865550,w:null,cork:null}
+];
+let season=SEED.slice();
+
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n).toLocaleString('en-US');
+const fmtM=n=>{
+  n=Number(n)||0;
+  if(n>=1e9) return '$'+(n/1e9).toFixed(2)+'B';
+  if(n>=1e6) return '$'+Math.round(n/1e6)+'M';
+  return '$'+fmt(n);
+};
+const avg=wk=>wk.ab>0? wk.h/wk.ab : 0;
+const avgTxt=a=>('.'+Math.round(a*1000).toString().padStart(3,'0'));
+
+function weekLabel(){
+  const d=new Date();
+  return (d.getMonth()+1)+'/'+d.getDate();
+}
+function isoWeek(d){
+  d=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
+  const y0=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return d.getUTCFullYear()+'-'+Math.ceil((((d-y0)/864e5)+1)/7);
+}
+function say(t,cls){ const m=$('msg'); m.textContent=t||''; m.className='msg '+(cls||''); }
+
+function localLoad(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw){ const p=JSON.parse(raw); if(Array.isArray(p)&&p.length) return p; }
+  }catch(e){}
+  return SEED.slice();
+}
+function localSave(){ try{ localStorage.setItem(KEY,JSON.stringify(season)); }catch(e){} }
+
+function save(msgTxt){
+  localSave();
+  render();
+  say((msgTxt||'Posted.')+' Saved in this browser.','ok');
+}
+
+function render(){
+  const head=$('weekHead'), rc=$('rowClosers'), rb=$('rowBlanks');
+  head.innerHTML='<th>WEEK</th>';
+  rc.innerHTML='<td>CLOSERS</td>'; rb.innerHTML='<td>BLANKS</td>';
+  for(let i=0;i<MAXWEEKS;i++){
+    const wk=season[i];
+    head.innerHTML+='<th>'+(wk? wk.label : (i+1))+'</th>';
+    const nowCls=(i===season.length-1)?' now':'';
+    if(wk){
+      rc.innerHTML+='<td class="lit'+nowCls+'">'+fmt(wk.h)+'</td>';
+      rb.innerHTML+='<td class="lit'+nowCls+'">'+fmt(Math.max(wk.ab-wk.h,0))+'</td>';
+    }else{
+      rc.innerHTML+='<td class="unlit">·</td>';
+      rb.innerHTML+='<td class="unlit">·</td>';
+    }
+  }
+  const cur=season[season.length-1];
+  $('sAvg').textContent=avgTxt(avg(cur));
+  $('sAB').textContent=fmt(cur.ab);
+  $('sHits').textContent=fmt(cur.h);
+  $('sK').textContent=fmt(cur.k);
+  $('sLOB').textContent=fmt(cur.lob);
+  $('sE').textContent=fmt(cur.e);
+  $('sOB').textContent=fmtM(cur.ob);
+  $('sW').textContent=(cur.w!=null)? fmt(cur.w) : '—';
+  $('sCork').textContent=(cur.w!=null&&cur.cork!=null&&cur.w>0)? (100*cur.cork/cur.w).toFixed(1)+'%' : '—';
+  $('subW').textContent=(cur.w!=null)?'closed won, all time':'not in this export';
+  $('subCork').textContent=(cur.cork!=null)?'wins \u226414 days in Engage':'not in this export';
+  const t=$('sTrend');
+  if(season.length>1){
+    const prev=avg(season[season.length-2]);
+    const d=Math.round((avg(cur)-prev)*1000);
+    t.innerHTML= d===0? 'even with last week'
+      : d>0? '<span class="trend-up">▲ +'+d+' pts vs last week</span>'
+           : '<span class="trend-down">▼ '+d+' pts vs last week</span>';
+  }else{ t.textContent='week 1 of the season'; }
+  const blanks=Math.max(cur.ab-cur.h,0);
+  $('gamestat').innerHTML = avg(cur)>=0.5
+    ? '<b>CLOSERS LEAD</b> '+fmt(cur.h)+'–'+fmt(blanks)+' — keep swinging'
+    : 'Blanks lead <b>'+fmt(blanks)+'–'+fmt(cur.h)+'</b> — plenty of ball left. Base hits win championships.';
+  $('inAB').value=cur.ab; $('inH').value=cur.h; $('inK').value=cur.k;
+  $('inLOB').value=cur.lob; $('inE').value=cur.e; $('inOB').value=cur.ob;
+  $('inW').value=(cur.w!=null)?cur.w:''; $('inCork').value=(cur.cork!=null)?cur.cork:'';
+}
+
+$('btnPost').addEventListener('click',()=>{
+  const wk={
+    label:weekLabel(), wk:isoWeek(new Date()),
+    ab:+$('inAB').value||0, h:+$('inH').value||0, k:+$('inK').value||0,
+    lob:+$('inLOB').value||0, e:+$('inE').value||0, ob:+$('inOB').value||0,
+    w:+$('inW').value||0, cork:+$('inCork').value||0
+  };
+  if(wk.h>wk.ab){ say('Hits can’t beat at-bats — check the numbers.','err'); return; }
+  if(wk.cork>wk.w){ say('Corked wins can’t beat total wins — check the numbers.','err'); return; }
+  const last=season[season.length-1];
+  if(last && last.wk===wk.wk){ season[season.length-1]=wk; save('This week’s inning updated.'); }
+  else if(season.length>=MAXWEEKS){ say('Season’s full — 12 weeks. Reset to start a new season.','err'); }
+  else { season.push(wk); save('Week '+season.length+' posted.'); }
+});
+$('btnUndo').addEventListener('click',()=>{
+  if(season.length<=1){ say('Week 1 stays on the board.','err'); return; }
+  season.pop(); save('Last week removed.');
+});
+$('btnReset').addEventListener('click',()=>{
+  if(!confirm('Reset the season? All posted weeks will be cleared.')) return;
+  season=SEED.slice(); save('New season. Play ball.');
+});
+
+const BATTERS=[["Michael Smith",1,1,0,0,0,8488],["Jason Arnoldi",32,31,0,0,1,1871517],["Robert Ronan",66,63,1,2,1,289942982],["Scott Burnbaum",22,21,1,0,1,24200000],["Lori Carlin",27,25,2,0,0,6182086],["Steven Sparling",5,4,1,0,0,23389],["Debra Meyer",6,4,2,0,1,665000],["John Kenney",56,28,9,18,3,220819],["Bruce Moore",24,11,13,0,13,3004000],["Randy West",31,12,10,5,2,876037],["Phillip Jones",15,4,8,1,2,7027283],["Jose Moreno Palacios",4,1,2,0,0,9000],["Raul Acuna",26,6,6,14,1,396997],["Kenneth Corrales",13,3,2,3,0,2882221],["Alfred Gray",9,2,1,6,0,20858],["Brett Anderson",36,7,22,7,1,523501],["Sean Fitzgerald",41,6,5,29,1,3383048],["Robert Cherella",29,4,1,2,1,13600000],["Adrian Vera",78,10,28,35,19,13775000],["Tanner Clow",48,6,41,1,14,2979549],["Brenda Puckett",37,4,15,18,1,306474],["Robert Graham",10,1,8,0,1,53135],["Kevin Heid",11,1,10,0,3,970000],["Kelly Cole",35,3,32,0,7,5442000],["Chip Seck",12,1,10,1,0,50000],["Dale Vick",30,2,24,4,4,22500],["Jeffrey Voight",15,1,14,0,6,50348],["Craig Cegielski",107,6,1,92,22,29116],["Jackie Rodriguez",21,1,18,2,0,63970],["Sheryl Rosenthal",21,1,12,6,1,1750000],["Shane Mcguinness",68,3,22,43,4,181000],["Jeffrey Wolff",46,2,40,4,0,1707969],["Bob Strobeck",47,2,27,18,4,150000],["Michelle Strong",135,5,116,14,46,430791],["Stephanie Cone",31,1,30,0,2,3000],["Kayte Bachyrycz",32,1,31,0,19,15000000],["Graham Case",65,2,61,2,24,176432],["Thomas Lindquist",34,1,17,0,18,3308007],["Michael Cataline",35,1,26,8,11,50000],["Ray Medina",36,1,34,1,4,15000],["Craig Applegate",73,1,72,0,19,50000],["Evan Stilwell",76,1,53,22,21,140000],["Lindsey Brandsma",84,1,81,2,49,9000000],["Roberto Valle",99,1,77,21,23,125000],["Kenneth Wirtz",140,0,90,49,9,25000],["Scarlett Quintero",81,0,81,0,77,0],["Gary Bell",80,0,9,55,4,1405000],["Carter Thurmond",64,0,64,0,35,0],["Buddy Mays",58,0,32,26,18,0],["Tammy Colson",55,0,42,1,31,1589000],["Lee Wills",54,0,48,5,23,5000000],["Phillip Sandhu",52,0,52,0,36,0],["Stephen Brown",52,0,37,15,17,0],["Chris Baker",51,0,51,0,49,0],["Zach Voigt",49,0,49,0,10,0],["Anthony Nash",46,0,46,0,45,0],["Carter Moots",46,0,45,0,20,0],["Derek Wright",46,0,46,0,1,0],["Felipe Siebrecht",46,0,42,4,6,0],["Larry Wasserman",46,0,46,0,19,0],["Maria Coley",46,0,46,0,38,0],["Dennis Luster",44,0,32,12,1,0],["Paul Lee",40,0,39,1,0,0],["Scott Haykin",39,0,39,0,35,0],["Kalikimaka Mendoza",38,0,37,1,10,0],["Alexander Velazquez",32,0,28,2,0,4239134],["Elaine Walters",30,0,30,0,30,0],["Michael Taylor",29,0,28,1,18,0],["Adam Armentor",28,0,28,0,10,0],["Caleigh Buchanan",28,0,28,0,1,0],["Maggie Gillmar",27,0,26,1,26,0],["Matthew Jurusz",27,0,23,4,0,0],["Sofia Aguirre",27,0,27,0,5,0],["Consuelo Hernandez",26,0,26,0,22,0],["Clifford Moore",24,0,24,0,2,0],["Dave Attardi",24,0,23,1,18,0],["Adam Gonzalez",23,0,23,0,2,0],["Edward Alderete",23,0,19,4,6,0],["Colin Penny",22,0,22,0,2,0],["Ronald Tolman",20,0,12,8,0,0],["John Sapanaro",19,0,19,0,0,0],["Christina Turini",18,0,18,0,18,0],["Jared Lemmons",18,0,18,0,0,0],["Jennifer Garcia",18,0,18,0,18,0],["Leah Lamp",18,0,18,0,0,0],["Michael Mastriano",18,0,16,2,2,0],["Willeford Taff",18,0,18,0,11,0],["Lonnie Harper",17,0,17,0,13,0],["Matthew Geyer",17,0,16,1,15,0],["Terry King",17,0,17,0,0,0],["Scott Pape",15,0,15,0,0,0],["Patrice Wright",14,0,11,3,1,0],["Christopher Geraci",13,0,13,0,1,0],["Thomas Colaiacovo",13,0,13,0,2,0],["David Burrough",12,0,12,0,4,0],["Peter Pirrello",12,0,12,0,10,0],["Michael Janack",11,0,11,0,0,0],["Tim Kirby",11,0,11,0,0,0],["Bernie Erickson",10,0,8,2,1,0],["Christopher Gonzalez",10,0,10,0,0,0],["Donn Koonce",10,0,9,1,1,0],["Kaitlyn Sprayberry",10,0,10,0,0,0],["Nathan Smith",10,0,10,0,1,0],["Todd Handley",10,0,10,0,10,0],["Trey Show",10,0,10,0,0,0],["Allyn Bostick",9,0,9,0,1,0],["Cameron Carpenter",9,0,8,1,1,0],["Chad Owens",9,0,9,0,0,0],["David Meeker",9,0,8,1,0,0],["Frank Klune",9,0,9,0,0,0],["Tiffany Santiago",9,0,9,0,2,0],["Tina Coleman",9,0,2,5,2,1000000],["Jason Maiden",8,0,8,0,3,0],["Jerrod Kew",8,0,8,0,0,0],["Jesse Maes",8,0,8,0,2,0],["Kristine Bair",8,0,6,0,6,5000],["Mario De La Pena",8,0,7,0,8,0],["Michael Demasco",8,0,0,1,0,6193000],["Nicholas Mele",8,0,7,1,2,0],["Shawn Wright",8,0,8,0,0,0],["Andrew Pezarras",7,0,7,0,0,0],["Christopher Willard",7,0,7,0,3,0],["Daniel Mclaughlin",7,0,7,0,0,0],["David Attardi",7,0,7,0,6,0],["Landon Sanders",7,0,7,0,2,0],["Robert Winkler",7,0,2,0,1,832400],["Sarah Hubbard Garcia",7,0,7,0,0,0],["Angelica Bell",6,0,6,0,6,0],["Charles Boyle",6,0,6,0,1,0],["Daniel Woods",6,0,6,0,1,0],["Donald Marvin",6,0,6,0,3,0],["Jason Mangrum",6,0,6,0,0,0],["John Brocken",6,0,4,2,4,0],["Kristin Brooks",6,0,6,0,1,0],["Michelle Pepper",6,0,6,0,1,0],["Nathaniel Smith",6,0,6,0,0,0],["Patrick Ruane",6,0,0,3,0,1900000],["Rafael Hernandez",6,0,6,0,2,0],["Roderick Schwarz",6,0,6,0,0,0],["Samuel Sarabia",6,0,3,3,0,0],["Steven Miller",6,0,6,0,4,0],["Tobie Dylla",6,0,2,4,0,0],["Trent Lang",6,0,6,0,6,0],["Charles Koekemoer",5,0,3,2,3,0],["Javier Villarreal",5,0,5,0,0,0],["Joseph Cohoon",5,0,5,0,0,0],["Joe Reuter",5,0,5,0,0,0],["John Campsmith",5,0,4,1,0,0],["Stephen Malave",5,0,5,0,0,0],["Wyatt Stevenson",5,0,5,0,0,0],["Antonio Limgenco",4,0,1,3,0,0],["Matt Kintzle",4,0,4,0,0,0],["Michael Baucom",4,0,4,0,0,0],["Scott Novy",4,0,4,0,0,0],["Zachary Stacy",4,0,4,0,4,0],["Aaron Black",3,0,3,0,0,0],["Brayden Mchazlett",3,0,1,1,3,0],["Cody Bass",3,0,3,0,0,0],["Dale Bundick",3,0,2,1,3,0],["Hunter Kasten",3,0,3,0,0,0],["Jaryd Vera",3,0,2,1,1,0],["John Hernandez",3,0,3,0,1,0],["John Stefanic",3,0,3,0,2,0],["Joseph Cannella",3,0,3,0,0,0],["Justin Curry",3,0,3,0,0,0],["Michael Gilbert",3,0,3,0,0,0],["Peter Cardona",3,0,2,0,0,10500],["Ronald Gullett",3,0,3,0,0,0],["Rachelle Kifumbi",3,0,3,0,0,0],["Andrew Chapman",2,0,1,1,0,0],["Anthony Linford",2,0,2,0,0,0],["Allyn Bostick",2,0,2,0,0,0],["Brannon Bourland",2,0,2,0,2,0],["Brian Dwyer",2,0,2,0,0,0],["Brian Stahl",2,0,2,0,0,0],["Charles Hill",2,0,2,0,0,0],["Eduardo Ramirez",2,0,2,0,0,0],["Glen Baker",2,0,2,0,0,0],["Ja'darius Lyons",2,0,2,0,0,0],["Joann Havet",2,0,2,0,0,0],["Jonathan Magee",2,0,1,1,1,0],["Joseph Canales",2,0,2,0,0,0],["Juan Garza",2,0,2,0,0,0],["Kathleen Shanahan",2,0,2,0,2,0],["Kenneth Hicks",2,0,2,0,0,0],["Kurtis Campbell",2,0,2,0,0,0],["Lacey Dray",2,0,2,0,0,0],["Mark Grenier",2,0,2,0,0,0],["Randi Flowers",2,0,2,0,0,0],["Rolando Gutierrez",2,0,2,0,0,0],["Ryan Olson",2,0,2,0,1,0],["Rolando Gutierrez",2,0,2,0,0,0],["Steve Frank",2,0,2,0,0,0],["Adam Haynes",1,0,1,0,0,0],["Alexander Gonzalez",1,0,1,0,0,0],["Alyssa Cignarella",1,0,1,0,0,0],["Amanda Stillman",1,0,1,0,1,0],["Amber Rodriguez",1,0,1,0,1,0],["Andrew Dillon",1,0,1,0,0,0],["Anjel Guerra",1,0,1,0,1,0],["Brandon Miller",1,0,1,0,1,0],["Brooks Digh",1,0,1,0,1,0],["Chad Kellum",1,0,1,0,1,0],["Daryl Schneider",1,0,1,0,1,0],["Earl Strohm",1,0,1,0,0,0],["Eric Bell",1,0,1,0,0,0],["Eric Hench",1,0,1,0,1,0],["Gabriel Castillo",1,0,1,0,0,0],["Garland Barmore",1,0,1,0,1,0],["Isaiah Gurule",1,0,1,0,0,0],["Jarrod Loper",1,0,1,0,0,0],["Jeffrey Ramirez",1,0,1,0,0,0],["Jeffrey Wadkins",1,0,1,0,0,0],["Jelani Lloyd",1,0,1,0,0,0],["Jennifer Todaro",1,0,1,0,0,0],["Jessica Miller",1,0,1,0,1,0],["Joe Ortega",1,0,1,0,0,0],["John Barbour",1,0,1,0,0,0],["John Griego",1,0,1,0,0,0],["John Tull",1,0,0,1,0,0],["Jonathan Hernandez",1,0,1,0,0,0],["Jorge Garcia",1,0,1,0,0,0],["Jose Moreno",1,0,1,0,0,0],["Joseph Le",1,0,1,0,0,0],["Kevin Reese",1,0,1,0,0,0],["Kody Hardage",1,0,1,0,0,0],["Madison Shelby",1,0,1,0,1,0],["Michael Kohut",1,0,1,0,0,0],["Monica Mccafferty",1,0,1,0,0,0],["Mike Gilbert",1,0,0,1,0,0],["Nicholas Scalici",1,0,1,0,0,0],["Peter Blau",1,0,1,0,0,0],["Philippe Strauss",1,0,1,0,0,0],["Raymond Valles",1,0,1,0,0,0],["Reed Hunter",1,0,1,0,0,0],["Richard Zubiate",1,0,1,0,0,0],["Ricky Tripodo",1,0,1,0,0,0],["Robert Kramp",1,0,1,0,0,0],["Rocio Martinez Becerra",1,0,1,0,0,0],["Ron Gullett",1,0,1,0,0,0],["Samuel Villarreal",1,0,1,0,0,0],["Shawna Talley",1,0,1,0,0,0],["Stanley Wills",1,0,1,0,0,0],["Stephen Jones",1,0,1,0,0,0],["Ty Gutierrez",1,0,1,0,1,0],["Ward Corley",1,0,1,0,0,0],["Wendy Allgood",1,0,1,0,1,0],["William Reuter",1,0,1,0,0,0],["Tim Hager",1,0,1,0,0,0]];
+// [name, ab, h, k, lob, e, onbase]
+const COLS=[
+  {key:'rank', lbl:'#',        get:null},
+  {key:'name', lbl:'BATTER',   get:r=>r[0]},
+  {key:'ab',   lbl:'AB',       get:r=>r[1]},
+  {key:'h',    lbl:'H',        get:r=>r[2]},
+  {key:'avg',  lbl:'AVG',      get:r=>r[1]?r[2]/r[1]:0},
+  {key:'k',    lbl:'K',        get:r=>r[3]},
+  {key:'lob',  lbl:'LOB',      get:r=>r[4]},
+  {key:'e',    lbl:'E',        get:r=>r[5]},
+  {key:'ob',   lbl:'ON BASE',  get:r=>r[6]}
+];
+let oSort='avg', oDir='desc', oQual=true;
+
+function renderOrder(){
+  const rows=BATTERS.filter(r=>oQual? r[1]>=30 : true);
+  const col=COLS.find(c=>c.key===oSort)||COLS[4];
+  rows.sort((a,b)=>{
+    let x=col.get(a), y=col.get(b);
+    if(typeof x==='string') return oDir==='asc'? x.localeCompare(y) : y.localeCompare(x);
+    if(x===y) return b[1]-a[1];
+    return oDir==='asc'? x-y : y-x;
+  });
+  const head=$('orderHead');
+  head.innerHTML=COLS.map(c=>{
+    if(c.key==='rank') return '<th scope="col" style="cursor:default">#</th>';
+    const on=(c.key===oSort);
+    const arw=on? (oDir==='desc'?' <span class="arw">\u25BC</span>':' <span class="arw">\u25B2</span>'):'';
+    return '<th scope="col" tabindex="0" data-k="'+c.key+'" aria-sort="'+(on?(oDir==='desc'?'descending':'ascending'):'none')+'">'+c.lbl+arw+'</th>';
+  }).join('');
+  const body=$('orderBody');
+  body.innerHTML=rows.map((r,i)=>{
+    const a=r[1]?r[2]/r[1]:0;
+    const lead=(oSort==='avg'&&oDir==='desc'&&i<3)?' leader':'';
+    const cold=(r[2]===0)?' cold':'';
+    return '<tr class="'+(lead+cold).trim()+'">'
+      +'<td class="rank">'+(i+1)+'</td>'
+      +'<td class="who">'+r[0]+'</td>'
+      +'<td>'+fmt(r[1])+'</td>'
+      +'<td>'+fmt(r[2])+'</td>'
+      +'<td class="ba">'+avgTxt(a)+'</td>'
+      +'<td'+(r[3]?'':' class="dim"')+'>'+fmt(r[3])+'</td>'
+      +'<td'+(r[4]?'':' class="dim"')+'>'+fmt(r[4])+'</td>'
+      +'<td'+(r[5]?'':' class="dim"')+'>'+fmt(r[5])+'</td>'
+      +'<td'+(r[6]?'':' class="dim"')+'>'+fmtM(r[6])+'</td></tr>';
+  }).join('');
+  const ab=rows.reduce((s,r)=>s+r[1],0), h=rows.reduce((s,r)=>s+r[2],0);
+  $('orderFoot').textContent=fmt(rows.length)+' batters shown \u00B7 '+fmt(h)+' hits on '+fmt(ab)+' at-bats \u00B7 '+avgTxt(ab?h/ab:0);
+}
+$('orderHead').addEventListener('click',e=>{
+  const th=e.target.closest('th[data-k]'); if(!th) return;
+  const k=th.dataset.k;
+  if(k===oSort) oDir=(oDir==='desc'?'asc':'desc');
+  else { oSort=k; oDir=(k==='name')?'asc':'desc'; }
+  renderOrder();
+});
+$('orderHead').addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  const th=e.target.closest('th[data-k]'); if(!th) return;
+  e.preventDefault(); th.click();
+});
+function setQual(v){
+  oQual=v;
+  $('tgQual').setAttribute('aria-pressed', v?'true':'false');
+  $('tgAll').setAttribute('aria-pressed', v?'false':'true');
+  $('orderSub').textContent = v
+    ? 'FSG owners carrying a real book \u2014 30 or more open opportunities in the 9/4 Engage export.'
+    : 'Every FSG owner with an open opportunity in the 9/4 Engage export.';
+  renderOrder();
+}
+$('tgQual').addEventListener('click',()=>setQual(true));
+$('tgAll').addEventListener('click',()=>setQual(false));
+setQual(true);
+
+season=localLoad();
+render();
+
+
+</script>
 </body>
 </html>
