@@ -389,7 +389,8 @@ h1,h2{font-family:'Oswald',Arial,sans-serif}
       </ul>
       <p style="margin:12px 0 0;font-size:15px">Send to <strong>Kayte Bachyrycz</strong>, Account Executive — <a href="mailto:kayte.bachyrycz@fsgi.com" style="color:var(--brand-blue);font-weight:700">kayte.bachyrycz@fsgi.com</a> · C: (203) 232-4154 — with the customer name in the subject line.</p>
     </div>
-    <div class="ok-row" style="margin-top:24px"><button onclick="location.href='index.html'">Back to Overview</button><button class="gold" onclick="location.reload()">Submit Another</button></div>
+    <div class="ok-row" style="margin-top:24px;flex-wrap:wrap"><button class="gold" id="openEmailBtn">✉&nbsp; Open the Email</button><button onclick="location.href='index.html'">Back to Overview</button><button onclick="location.reload()">Submit Another</button></div>
+    <p style="margin-top:12px;font-size:13px;color:var(--steel-blue)">The email opens pre-filled — just drag your photos and the electric bill in and hit send.</p>
   </div>
 </div>
 
@@ -574,15 +575,36 @@ var FALLBACK_EMAIL = 'kayte.bachyrycz@fsgi.com';
       +'&body='+encodeURIComponent(lines.join('\n'));
   }
 
+  /* --- pre-filled files email (opens automatically on the done screen) --- */
+  var lastPayload=null;
+  function filesMailto(){
+    var p=lastPayload||payload();
+    var lines=[
+      'Hi Kayte,','',
+      'I just submitted a lighting retrofit opportunity through the MSC portal — attached are the files for it:','',
+      '• Electric bill',
+      '• Photos of the space / fixtures',
+      '• Existing scope of work (if attached)','',
+      'Customer: '+p.customer,
+      'Site: '+p.address.replace(/\n/g,', '),
+      'Submitted by: '+p.name+(p.phone?' · '+p.phone:''),'',
+      'Thanks!'
+    ];
+    location.href='mailto:'+FALLBACK_EMAIL
+      +'?subject='+encodeURIComponent('MSC Lighting Opportunity — '+p.customer+' — files')
+      +'&body='+encodeURIComponent(lines.join('\n'));
+  }
+  document.getElementById('openEmailBtn').addEventListener('click',filesMailto);
+
   var sending=false;
   function submit(){
     if(sending)return;
-    var p=payload();
+    var p=payload(); lastPayload=p;
     if(!MSC_ENDPOINT){ mailtoFallback(p); show(DONE); return; }
     sending=true; submitBtn.textContent='Sending…';
     fetch(MSC_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)})
       .then(function(r){return r.json();})
-      .then(function(j){ if(j&&j.ok){show(DONE);} else{throw new Error('bad response');} })
+      .then(function(j){ if(j&&j.ok){show(DONE); setTimeout(filesMailto,700);} else{throw new Error('bad response');} })
       .catch(function(){ mailtoFallback(p); show(DONE); })
       .finally(function(){ sending=false; submitBtn.textContent='Submit Opportunity'; });
   }
